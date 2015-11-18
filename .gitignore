@@ -30,3 +30,9 @@
 
 # Debug files
 *.dSYM/
+
+# OSX ignores
+.DS_Store
+
+# IDE ignores
+.idea/
