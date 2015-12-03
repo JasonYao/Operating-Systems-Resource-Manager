@@ -31,7 +31,7 @@ public class SimulateResourceManagers
         // Fills each container with the respective objects
         fillAllContainers(args[validateInput(args)]);
 
-        testAllContainers();
+        //testAllContainers(); // TODO remove after
 
         // Runs the simulation, prints the output, and resets it for the next run (0 = ORM, 1 = Banker's)
         simulationWrapper(0);
@@ -198,7 +198,10 @@ public class SimulateResourceManagers
         } // End of the finally block
     } // End of the fill all containers method
 
-
+    /**
+     * Wrapper method to call all simulation rounds
+     * @param version 0 is opportunistic resource manager, 1 is for banker's algorithm
+     */
     private static void simulationWrapper(int version)
     {
         try
@@ -215,7 +218,7 @@ public class SimulateResourceManagers
                     throw new InvalidInputException(
                             "Error: simulation wrapper has called an invalid manager algorithm");
             }
-            printOutput();
+            printOutput(version);
             reset();
         }
         catch (InvalidInputException e)
@@ -253,10 +256,55 @@ public class SimulateResourceManagers
 
     } // End of the reset method
 
-    private static void printOutput()
+    /**
+     * Prints the output of the simulation round
+     */
+    private static void printOutput(int version)
     {
-        //TODO
+        switch (version)
+        {
+            case 0:
+                System.out.println("\t\tFIFO");
+                break;
+            case 1:
+                System.out.println("\t\tBANKER'S\n");
+                break;
+            default:
+                System.err.println("Error: Invalid run number given during print out!");
+                System.exit(1);
+        }
 
+        int totalWaitTime = 0;
+        // Iterates through the tasks and prints out the per task metadata
+        for (Task currentTask : taskContainer)
+        {
+            // Task was aborted early, prints abort message
+            if (currentTask.getStatus() == 4)
+            {
+                int externalPrintID = currentTask.getTaskID() + 1;
+                System.out.println("\tTask " + externalPrintID + "  \taborted\n");
+            }
+            else
+            {
+                // Amount of time taken to complete the task (includes blocked time)
+                int turnAround = currentTask.getStopTime() - currentTask.getStartTime();
+                totalWaitTime += currentTask.getWaitTime();
+
+                // Percentage of time spent waiting
+                double percentageOfTimeSpentWaiting = ((double) currentTask.getWaitTime() /
+                        ((double) turnAround))*(100.000000);
+                System.out.printf("\tTask %d  \t%d\t%d\t%6f%%\n", currentTask.getTaskID() + 1,
+                        turnAround, currentTask.getWaitTime(), percentageOfTimeSpentWaiting);
+            }
+        }
+
+        // Calculates the total percentage of time spent waiting
+        double globalPercentageOfTimeSpentWaiting = ((double)totalWaitTime/((double)CURRENT_CYCLE_TIME))*(100.000000);
+        long timeRun = CURRENT_CYCLE_TIME;
+
+        // Prints out the global totals
+        System.out.printf("\tTotal\t\t%d\t%d\t%6f%%\n", timeRun, totalWaitTime,
+                globalPercentageOfTimeSpentWaiting);
     } // End of the print output method
 
     /***** Testing Suite *****/
@@ -268,10 +316,7 @@ public class SimulateResourceManagers
         testStepContainer();
         testResourceContainer();
         testTaskContainer();
-
-        // Tests the task container
     } // End of the test all containers method
-
 
     /**
      * [Test Method] Tests the step container for correct internals
@@ -318,7 +363,6 @@ public class SimulateResourceManagers
                     default:
                         throw new InvalidInputException(
                                 "Error: Invalid activity found, please check the spelling in the input file");
-
                 }
             }
             catch (InvalidInputException e)
