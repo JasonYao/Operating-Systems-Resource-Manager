@@ -34,6 +34,3 @@ resource-manager
 
 # OSX ignores
 .DS_Store
-
-# IDE ignores
-.idea/
