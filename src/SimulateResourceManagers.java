@@ -116,8 +116,10 @@ public class SimulateResourceManagers
             // Fills the resource container
             for (int i = 0; i < numberOfResourceTypes; ++i)
             {
+                int totalResourceAvailable = fileScanner.nextInt();
                 if (fileScanner.hasNext())
-                    resourceContainer.add(new Resource(i, fileScanner.nextInt(), 0, new ArrayList<>()));
+                    resourceContainer.add(new Resource(i, totalResourceAvailable,
+                            totalResourceAvailable, new ArrayList<>()));
             }
 
             // Fills the task container
