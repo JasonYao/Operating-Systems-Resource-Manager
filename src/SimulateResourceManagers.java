@@ -3,6 +3,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Scanner;
 
 public class SimulateResourceManagers
@@ -239,14 +240,31 @@ public class SimulateResourceManagers
         }
     } // End of the simulation wrapper method
 
+    /**
+     * [Helper Method] Resets everything between simulation runs
+     */
     private static void reset()
     {
-        //TODO
         // Resets all resources
+        for (Resource currentResource : resourceContainer)
+        {
+            currentResource.setTaskUsageList(new ArrayList<>());
+            currentResource.setResourcesCurrentlyAvaillable(currentResource.getTotalAmountOfResouceAvailable());
+        }
 
         // Resets all tasks
+        for (Task currentTask : taskContainer)
+        {
+            currentTask.setResourcesInUse(new ArrayList<>());
+
+            currentTask.setStartTime(0);
+            currentTask.setWaitTime(0);
+            currentTask.setStopTime(0);
+            currentTask.setStatus(0);
+        }
 
         // Resets time
+        CURRENT_CYCLE_TIME = 0;
 
     } // End of the reset method
 
