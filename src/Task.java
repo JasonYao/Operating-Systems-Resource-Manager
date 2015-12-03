@@ -11,7 +11,7 @@ public class Task
     private int startTime;
     private int stopTime;
     private int waitTime;
-    private ArrayList<Resource> resourcesInUse;
+    private ArrayList<Tuple> resourcesInUse;
 
     /**
      * Task object constructor
@@ -22,7 +22,7 @@ public class Task
      * @param waitTime The wait time for this task
      * @param resourcesInUse The resources in use by this task currently
      */
-    public Task (int taskID, int status, int startTime, int stopTime, int waitTime, ArrayList<Resource> resourcesInUse)
+    public Task (int taskID, int status, int startTime, int stopTime, int waitTime, ArrayList<Tuple> resourcesInUse)
     {
         setTaskID(taskID);
         setStatus(status);
@@ -72,11 +72,11 @@ public class Task
         this.waitTime = waitTime;
     }
 
-    public ArrayList<Resource> getResourcesInUse() {
+    public ArrayList<Tuple> getResourcesInUse() {
         return resourcesInUse;
     }
 
-    public void setResourcesInUse(ArrayList<Resource> resourcesInUse) {
+    public void setResourcesInUse(ArrayList<Tuple> resourcesInUse) {
         this.resourcesInUse = resourcesInUse;
     }
 } // End of the task class
