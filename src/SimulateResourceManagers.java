@@ -327,25 +327,6 @@ public class SimulateResourceManagers
                 System.exit(1);
             }
         } // End of iterating through all steps
-
-        //TODO remove after testing
-//        for (int i = 0; i < stepContainer.size(); ++i)
-//        {
-//            if ((stepContainer.get(i).getStepType() == 0) || (stepContainer.get(i).getStepType() == 1)
-//                    || (stepContainer.get(i).getStepType() == 3))
-//            {
-//                System.out.println("The step type for initiate, request, or release is: " +
-//                        stepContainer.get(i).getStepType());
-//                Resource test = (Resource) stepContainer.get(i).getReferencedResource();
-//                System.out.println("The referenced Resource has a resource ID of:" + test.getResourceID());
-//
-//                System.out.println("The referenced task has a task ID of: " +
-//                        stepContainer.get(i).getReferencedTask().getTaskID());
-//
-//                System.out.println("The group this is a part of is: " + stepContainer.get(i).getGroup());
-//            }
-//        } //TODO end of testing
-
     } // End of the test step container method
 
     /**
