@@ -18,7 +18,8 @@ public class Resource
      * @param resourcesCurrentlyAvailable The current amount of resources available
      * @param taskUsageList The resources that are currently using this resource
      */
-    public Resource (int resourceID, int totalAmountOfResourceAvailable, int resourcesCurrentlyAvailable, ArrayList<Task> taskUsageList)
+    public Resource (int resourceID, int totalAmountOfResourceAvailable,
+                     int resourcesCurrentlyAvailable, ArrayList<Task> taskUsageList)
     {
         setResourceID(resourceID);
         setTotalAmountOfResouceAvailable(totalAmountOfResourceAvailable);
