@@ -3,7 +3,6 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Scanner;
 
 public class SimulateResourceManagers
@@ -32,23 +31,7 @@ public class SimulateResourceManagers
         // Fills each container with the respective objects
         fillAllContainers(args[validateInput(args)]);
 
-//        //TODO remove after testing
-//        for (int i = 0; i < stepContainer.size(); ++i)
-//        {
-//            if ((stepContainer.get(i).getStepType() == 0) || (stepContainer.get(i).getStepType() == 1)
-//                    || (stepContainer.get(i).getStepType() == 3))
-//            {
-//                System.out.println("The step type for initiate, request, or release is: " +
-//                        stepContainer.get(i).getStepType());
-//                Resource test = (Resource) stepContainer.get(i).getReferencedResource();
-//                System.out.println("The referenced Resource has a resource ID of:" + test.getResourceID());
-//
-//                System.out.println("The referenced task has a task ID of: " +
-//                        stepContainer.get(i).getReferencedTask().getTaskID());
-//
-//                System.out.println("The group this is a part of is: " + stepContainer.get(i).getGroup());
-//            }
-//        } //TODO end of testing
+        testAllContainers();
 
         // Runs the simulation, prints the output, and resets it for the next run (0 = ORM, 1 = Banker's)
         simulationWrapper(0);
@@ -275,5 +258,137 @@ public class SimulateResourceManagers
         //TODO
 
     } // End of the print output method
+
+    /***** Testing Suite *****/
+    /**
+     * [Test Method] Tests each container to see if they have the correct internals
+     */
+    private static void testAllContainers()
+    {
+        testStepContainer();
+        testResourceContainer();
+        testTaskContainer();
+
+        // Tests the task container
+    } // End of the test all containers method
+
+
+    /**
+     * [Test Method] Tests the step container for correct internals
+     */
+    private static void testStepContainer()
+    {
+        for (Step currentStep : stepContainer)
+        {
+            System.out.println("The current step's ID is: " + currentStep.getStepID());
+            System.out.println("The current step's group is: " + currentStep.getGroup());
+            System.out.println("The current step's referenced task ID is: "
+                    + currentStep.getReferencedTask().getTaskID());
+
+            if ((currentStep.getStepType() == 0) || (currentStep.getStepType() == 1)
+                    || (currentStep.getStepType() == 3))
+            {
+                Resource currentReferencedResource = (Resource) currentStep.getReferencedResource();
+                System.out.println("The current step's referenced resource ID is: "
+                        + currentReferencedResource.getResourceID());
+
+            }
+            System.out.println("The current step's number of resources utilised is: "
+                    + currentStep.getNumberOfResourcesUtilised());
+            System.out.print("The current step's type is: ");
+            try
+            {
+                switch (currentStep.getStepType())
+                {
+                    case 0:
+                        System.out.println("initiate");
+                        break;
+                    case 1:
+                        System.out.println("request");
+                        break;
+                    case 2:
+                        System.out.println("compute");
+                        break;
+                    case 3:
+                        System.out.println("release");
+                        break;
+                    case 4:
+                        System.out.println("terminate");
+                        break;
+                    default:
+                        throw new InvalidInputException(
+                                "Error: Invalid activity found, please check the spelling in the input file");
+
+                }
+            }
+            catch (InvalidInputException e)
+            {
+                System.err.println(e.getMessage());
+                System.exit(1);
+            }
+        } // End of iterating through all steps
+
+        //TODO remove after testing
+//        for (int i = 0; i < stepContainer.size(); ++i)
+//        {
+//            if ((stepContainer.get(i).getStepType() == 0) || (stepContainer.get(i).getStepType() == 1)
+//                    || (stepContainer.get(i).getStepType() == 3))
+//            {
+//                System.out.println("The step type for initiate, request, or release is: " +
+//                        stepContainer.get(i).getStepType());
+//                Resource test = (Resource) stepContainer.get(i).getReferencedResource();
+//                System.out.println("The referenced Resource has a resource ID of:" + test.getResourceID());
+//
+//                System.out.println("The referenced task has a task ID of: " +
+//                        stepContainer.get(i).getReferencedTask().getTaskID());
+//
+//                System.out.println("The group this is a part of is: " + stepContainer.get(i).getGroup());
+//            }
+//        } //TODO end of testing
+
+    } // End of the test step container method
+
+    /**
+     * [Test Method] Tests the resource container for correct internals
+     */
+    private static void testResourceContainer()
+    {
+        for (Resource currentResource : resourceContainer)
+        {
+            System.out.println("The current resource's ID is: " + currentResource.getResourceID());
+            System.out.println("The current resource's total available amount is: "
+                    + currentResource.getTotalAmountOfResouceAvailable());
+            System.out.println("The current resource's current available amount is: "
+                    + currentResource.getResourcesCurrentlyAvaillable());
+
+            System.out.print("The current resource is currently in use by:");
+            for (Task currentTask : currentResource.getTaskUsageList())
+                System.out.print(" " + currentTask.getResourcesInUse().get(currentResource.getResourceID()));
+            System.out.println();
+        }
+    } // End of the test resource container method
+
+    /**
+     * [Test Method] Tests the task container for correct internals
+     */
+    private static void testTaskContainer()
+    {
+        for (Task currentTask : taskContainer)
+        {
+            System.out.println("The current task's ID is: " + currentTask.getTaskID());
+            System.out.println("The current task's start time is: " + currentTask.getStartTime());
+            System.out.println("The current task's wait time is: " + currentTask.getWaitTime());
+            System.out.println("The current task's stop time is: " + currentTask.getStopTime());
+            System.out.println("The current task's status is: " + currentTask.getStatus());
+
+            System.out.print("The current task's is using resources:");
+            for (Tuple currentTuple : currentTask.getResourcesInUse())
+            {
+                System.out.print(" " + currentTuple.getResource().getResourceID());
+                System.out.print("(" + currentTuple.getAmountOfResource() + ")");
+            }
+            System.out.println();
+        }
+    } // End of the test task container method
 
 } // End of the simulate resource managers class
