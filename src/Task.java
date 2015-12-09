@@ -1,4 +1,4 @@
-import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Task object class
@@ -7,11 +7,11 @@ public class Task
 {
     // Task attributes
     private int taskID;
-    private int status;
+    private int status; // 0 = not started, 1 = running, 2 = blocked, 3 = terminated, 4 = aborted
     private int startTime;
     private int stopTime;
     private int waitTime;
-    private ArrayList<Tuple> resourcesInUse;
+    private HashMap<Resource, Integer> resourcesInUse;
 
     /**
      * Task object constructor
@@ -22,7 +22,8 @@ public class Task
      * @param waitTime The wait time for this task
      * @param resourcesInUse The resources in use by this task currently
      */
-    public Task (int taskID, int status, int startTime, int stopTime, int waitTime, ArrayList<Tuple> resourcesInUse)
+    public Task (int taskID, int status, int startTime, int stopTime, int waitTime,
+                 HashMap<Resource, Integer> resourcesInUse)
     {
         setTaskID(taskID);
         setStatus(status);
@@ -72,11 +73,11 @@ public class Task
         this.waitTime = waitTime;
     }
 
-    public ArrayList<Tuple> getResourcesInUse() {
+    public HashMap<Resource, Integer>  getResourcesInUse() {
         return resourcesInUse;
     }
 
-    public void setResourcesInUse(ArrayList<Tuple> resourcesInUse) {
+    public void setResourcesInUse(HashMap<Resource, Integer> resourcesInUse) {
         this.resourcesInUse = resourcesInUse;
     }
 } // End of the task class

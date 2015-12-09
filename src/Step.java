@@ -11,10 +11,14 @@ public class Step
     private Task referencedTask;
     private Object referencedResource;
     private int numberOfResourcesUtilised;
+    private Step nextStep;
+    private Step previousStep;
 
     public Step(int stepID, int stepType, int group, Task referencedTask, Object referencedResource,
-                int numberOfResourcesUtilised)
+                int numberOfResourcesUtilised, Step nextStep, Step previousStep)
     {
+        setPreviousStep(previousStep);
+        setNextStep(nextStep);
         setStepID(stepID);
         setStepType(stepType);
         setGroup(group);
@@ -23,6 +27,22 @@ public class Step
         setReferencedResource(referencedResource);
         setNumberOfResourcesUtilised(numberOfResourcesUtilised);
     } // End of the step object constructor
+
+    public Step getPreviousStep() {
+        return previousStep;
+    }
+
+    public void setPreviousStep(Step previousStep) {
+        this.previousStep = previousStep;
+    }
+
+    public Step getNextStep() {
+        return nextStep;
+    }
+
+    public void setNextStep(Step nextStep) {
+        this.nextStep = nextStep;
+    }
 
     public int getStepID() {
         return stepID;
