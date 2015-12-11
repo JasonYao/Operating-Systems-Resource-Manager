@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-testNumber="05"
+testNumber="02"
 
 # Checks whether or not the output file is created, creates one if not
 if [ ! -d output ]; then

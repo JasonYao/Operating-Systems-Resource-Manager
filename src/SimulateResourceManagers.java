@@ -15,14 +15,16 @@ public class SimulateResourceManagers
     private static int NUMBER_OF_GROUPS = 0;
     private static boolean IS_SEQUENTIAL_TASK;
     private static boolean DEADLOCK_WAS_DETECTED;
-    private static boolean MULTIPLE_DEADLOCKS_WERE_DETECTED;
+    private static boolean STEP_SUCCEEDED_IN_DEADLOCK;
+    private static boolean MULTIPLE_DEADLOCK_WAS_DETECTED;
 
     private static ArrayList<Step> currentStepContainer;
 
     // Ended tasks containers
     private static ArrayList<Task> terminatedTasksContainer;
     private static ArrayList<Task> abortedTasksContainer;
-    private static Queue<Task> deadlockedTasksContainer;
+    private static ArrayList<Step> deadlockedStepsContainer;
+    private static HashMap<Resource, Integer> resourcesToBeFreedAtStartOfCycle;
 
 
     /**
@@ -36,16 +38,18 @@ public class SimulateResourceManagers
         resourceContainer = new ArrayList<>();
         taskContainer = new ArrayList<>();
         stepContainer = new ArrayList<>();
-        deadlockedTasksContainer = new LinkedList<>();
+        deadlockedStepsContainer = new ArrayList<>();
         terminatedTasksContainer = new ArrayList<>();
         currentStepContainer = new ArrayList<>();
         abortedTasksContainer = new ArrayList<>();
+        resourcesToBeFreedAtStartOfCycle = new HashMap<>();
 
         CURRENT_CYCLE_TIME = 0;
         IS_VERBOSE_MODE = false;
         IS_SEQUENTIAL_TASK = true;
         DEADLOCK_WAS_DETECTED = false;
-        MULTIPLE_DEADLOCKS_WERE_DETECTED = false;
+        STEP_SUCCEEDED_IN_DEADLOCK = false;
+        MULTIPLE_DEADLOCK_WAS_DETECTED = false;
 
         // Fills each container with the respective objects
         fillAllContainers(args[validateInput(args)]);
@@ -95,9 +99,11 @@ public class SimulateResourceManagers
      */
     private static void simulateORM()
     {
+        boolean hasAlreadyDealtWithDeadlock = true;
         while (terminatedTasksContainer.size() + abortedTasksContainer.size() != taskContainer.size())
         {
             simulateACycle(false);
+            //testResourceContainer(); //TODO remove after
 
             while (isDeadlocked())
             {
@@ -115,21 +121,106 @@ public class SimulateResourceManagers
                     Step currentStep = currentStepContainer.get(i);
                     currentStepContainer.set(i, currentStep.getPreviousStep());
                 }
+                if ((hasAlreadyDealtWithDeadlock) && (MULTIPLE_DEADLOCK_WAS_DETECTED))
+                {
+                    --CURRENT_CYCLE_TIME;
+                    hasAlreadyDealtWithDeadlock = false;
+                }
             }
+            System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Time has increased");
             ++CURRENT_CYCLE_TIME;
         }
     } // End of the simulate ORM method
 
+    private static void startOfCycleResourceFreeing()
+    {
+        // Deals with any resources to be freed at the start of the cycle
+        for (Map.Entry<Resource, Integer> entry : resourcesToBeFreedAtStartOfCycle.entrySet())
+        {
+            Resource resource = entry.getKey();
+            int amountToBeFreed = entry.getValue();
+
+            resource.setResourcesCurrentlyAvaillable(resource.getResourcesCurrentlyAvaillable() + amountToBeFreed);
+            resourcesToBeFreedAtStartOfCycle.remove(resource);
+        }
+    } // End of the start of cycle resource freeing method
+
     private static void simulateACycle(boolean isTestCycle)
     {
+        startOfCycleResourceFreeing();
+
+        // Deals with deadlocked tasks, skipping over them later on
+        System.out.println("The number of deadlocked steps before is: " + deadlockedStepsContainer.size());
+        int deadlockedInitialSize = deadlockedStepsContainer.size();
+        System.out.println("----- Start of dealing with deadlocked task -----");
+        for (int i = 0; i < deadlockedInitialSize; ++i)
+        {
+            Step currentStep = deadlockedStepsContainer.get(i);
+            sequentialTaskORM(currentStep, isTestCycle);
+            System.out.println("The step success was: " + STEP_SUCCEEDED_IN_DEADLOCK);
+            currentStep.setMarkedForRemovalFromDeadlock(STEP_SUCCEEDED_IN_DEADLOCK);
+            currentStep.setShouldBeSkipped(true);
+
+            currentStepContainer.set(currentStep.getReferencedTask().getTaskID(), currentStep);
+            System.out.println("The step that was removed had StepID: " + currentStep.getStepID());
+
+        }
+        System.out.println("----- Finished dealing with deadlocked task -----");
+
+        for (Step currentStep : deadlockedStepsContainer)
+            System.out.println("The deadlocked step's ID is: " + currentStep.getStepID()); //TODO remove after
+
+        System.out.println("---- Got to start of deletion, ----");
+        // Deletes those marked for deletion from the deadlocked tasks
+        for (Iterator<Step> deleteIterator = deadlockedStepsContainer.iterator(); deleteIterator.hasNext();)
+        {
+            Step currentStep = deleteIterator.next();
+            if (currentStep.isMarkedForRemovalFromDeadlock())
+            {
+                System.out.println("Removed for step ID: " + currentStep.getStepID());
+                deleteIterator.remove();
+                deadlockedStepsContainer.remove(currentStep);
+            }
+
+        }
+        System.out.println("---- Got to end of deletion ----");
+        System.out.println("The number of deadlocked steps after deletion is: " + deadlockedStepsContainer.size());
+
+//        for (Step currentStep : deadlockedStepsContainer)
+//        {
+//            currentStep.setMarkedForRemovalFromDeadlock(false);
+//            currentStepContainer.set(currentStep.getReferencedTask().getTaskID(), currentStep);
+//            System.out.println("The deadlocked step's ID is: " + currentStep.getStepID()); //TODO remove after
+//        }
+        // Runs through the rest of the cycle in order, skipping if it has already been run
         for (int i = 0; i < currentStepContainer.size(); ++i)
         {
+            //testResourceContainer(); //TODO remove after
+            System.out.println("The number of deadlocked steps is: " + deadlockedStepsContainer.size());
             Step currentStep = currentStepContainer.get(i);
             if (currentStep == null)
-                System.out.println("Shit is still null"); //TODO remove this shit after
-            sequentialTaskORM(currentStep, isTestCycle);
-            currentStepContainer.set(i, currentStep.getNextStep());
+                continue;
+            if (currentStep.isShouldBeSkipped())
+            {
+                // Skips over the step
+                currentStepContainer.set(i, currentStep.getNextStep());
+                System.out.println("Skipping over this step"); //TODO remove after
+            }
+            else
+            {
+                // Runs the step
+                System.out.println("Did not skip over this step"); //TODO remove after
+                sequentialTaskORM(currentStep, isTestCycle);
+                currentStepContainer.set(i, currentStep.getNextStep());
+            }
         }
+
+        // TODO remove after
+//        if ((isTestCycle) && (deadlockedStepsContainer.size() ==
+//                taskContainer.size() - abortedTasksContainer.size() - terminatedTasksContainer.size()))
+//        {
+//            DEADLOCK_WAS_DETECTED = true;
+//        }
     } // End of the simulate a cycle method
 
     private static void testForNewDeadlock()
@@ -140,9 +231,7 @@ public class SimulateResourceManagers
             Step currentStep = currentStepContainer.get(i);
             currentStepContainer.set(i, currentStep.getPreviousStep());
         }
-
         simulateACycle(true);
-
     } // End of the test for new deadlock method
 
     private static void releaseAllTaskResources(Task task)
@@ -162,7 +251,6 @@ public class SimulateResourceManagers
         taskToBeAborted.setStatus(4);
         taskToBeAborted.setStopTime(CURRENT_CYCLE_TIME);
         abortedTasksContainer.add(taskToBeAborted);
-
         releaseAllTaskResources(taskToBeAborted);
     } // End of the abort task method
 
@@ -194,9 +282,19 @@ public class SimulateResourceManagers
                 currentTask.setWaitTime(currentTask.getWaitTime() - 1);
         }
 
+        // Sets for each of the steps back their booleans
+        for (Step currentStep : currentStepContainer)
+        {
+            currentStep.setMarkedForRemovalFromDeadlock(false);
+            currentStep.setShouldBeSkipped(false);
+        }
+
         // Clears the deadlocked arraylist
-        while (!deadlockedTasksContainer.isEmpty())
-            deadlockedTasksContainer.remove();
+        for (int i = 0; i < deadlockedStepsContainer.size(); ++i)
+            deadlockedStepsContainer.remove(i);
+
+        deadlockedStepsContainer.clear();
+        System.out.println("############################ size of deadlocked container is: " + deadlockedStepsContainer.size());
 
         if (IS_VERBOSE_MODE)
         {
@@ -211,12 +309,17 @@ public class SimulateResourceManagers
      */
     private static boolean isDeadlocked()
     {
+        System.out.println("The number of deadlocked tasks before isDeadlocked check is: " + deadlockedStepsContainer.size());
         int numberOfAliveTasks = taskContainer.size() - (abortedTasksContainer.size() + terminatedTasksContainer.size());
-        if ((numberOfAliveTasks == deadlockedTasksContainer.size()) && (numberOfAliveTasks != 0))
+
+        if ((numberOfAliveTasks == deadlockedStepsContainer.size()) && (numberOfAliveTasks != 0))
         {
-            // Deadlock was found
             if (DEADLOCK_WAS_DETECTED)
-                MULTIPLE_DEADLOCKS_WERE_DETECTED = true;
+            {
+                MULTIPLE_DEADLOCK_WAS_DETECTED = true;
+                System.out.println("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT Multiple deadlock was detected");
+            }
+            // Deadlock was found
             DEADLOCK_WAS_DETECTED = true;
             return true;
         }
@@ -246,10 +349,40 @@ public class SimulateResourceManagers
         else if (task.getStatus() == 4)
         {return;}
 
+        if (isTestCycle)
+            testingWhetherCurrentStepIsValid(currentStep, currentStepType, task, amountRequested);
+        else
+            sequentialTaskORMRealCycle(currentStep, currentStepType, task, outputTaskNumber, amountRequested);
+    } // End of the sequential task, single group ORM method
+
+    private static void requestFailed(Step currentStep, Task task,
+                                      int outputTaskNumber, int amountRequested)
+    {
+        Resource resource =  (Resource) currentStep.getReferencedResource();
+        // Not enough resources are available to grant the request
+        task.setStatus(2);
+        task.setWaitTime(task.getWaitTime() + 1);
+        if (!deadlockedStepsContainer.contains(currentStep))
+            deadlockedStepsContainer.add(currentStep);
+
+        //if ((IS_VERBOSE_MODE) && (!isTestCycle))
+        if (IS_VERBOSE_MODE)
+        {
+            System.out.println("For step #" + currentStep.getStepID() + ": Task " + outputTaskNumber +
+                    " unsuccessfully requested " + amountRequested + " of resource "
+                    + resource.getResourceID() + " at time: " + CURRENT_CYCLE_TIME);
+        }
+        STEP_SUCCEEDED_IN_DEADLOCK = false;
+    } // End of request failed method
+
+    private static void sequentialTaskORMRealCycle(Step currentStep, int currentStepType, Task task,
+                                                   int outputTaskNumber, int amountRequested)
+    {
         switch (currentStepType)
         {
             case 0:
             {
+                // Case 0: initiate (real)
                 Resource resource =  (Resource) currentStep.getReferencedResource();
                 // Action is: initiate
                 if (task.getStatus() == 0)
@@ -266,70 +399,53 @@ public class SimulateResourceManagers
                             " initially claims " + currentStep.getNumberOfResourcesUtilised() + " of resource "
                             + resource.getResourceID() + " at time: " + CURRENT_CYCLE_TIME);
                 }
+                STEP_SUCCEEDED_IN_DEADLOCK = true;
                 break;
-            } // End of case 0: initiate
+            } // End of case 0: initiate (real)
             case 1:
             {
-                // Action is: request
-
+                // Case 1: request (real)
                 Resource resource =  (Resource) currentStep.getReferencedResource();
                 if (amountRequested <= resource.getResourcesCurrentlyAvaillable())
                 {
                     // Enough resources are available to grant the request
-                    if (isTestCycle)
+                    resource.setResourcesCurrentlyAvaillable(
+                            resource.getResourcesCurrentlyAvaillable() - amountRequested);
+
+                    // Checks whether the resource is already been requested before
+                    HashMap<Resource, Integer> map = task.getResourcesInUse();
+                    if (map.containsKey(resource))
                     {
-                        task.setWaitTime(task.getWaitTime() + 1);
+                        // Resource has been requested before, adds the amount requested to the old value
+                        int newValue = map.get(resource) + amountRequested;
+                        map.replace(resource, newValue);
                     }
                     else
                     {
-                        resource.setResourcesCurrentlyAvaillable(
-                                resource.getResourcesCurrentlyAvaillable() - amountRequested);
-
-                        // Checks whether the resource is already been requested before
-                        HashMap<Resource, Integer> map = task.getResourcesInUse();
-                        if (map.containsKey(resource))
-                        {
-                            // Resource has been requested before, adds the amount requested to the old value
-                            int newValue = map.get(resource) + amountRequested;
-                            map.replace(resource, newValue);
-                        }
-                        else
-                        {
-                            // Resource has not been requested before, adds a new key/ value pair
-                            map.put(resource, amountRequested);
-                            resource.getTaskUsageList().add(task);
-                        }
-
-                        //if ((IS_VERBOSE_MODE) && (!isTestCycle))
-                        if (IS_VERBOSE_MODE)
-                        {
-
-                            System.out.println("For step #" + currentStep.getStepID() + ": Task " + outputTaskNumber +
-                                    " successfully requested " + amountRequested + " of resource "
-                                    + resource.getResourceID() + " at time: " + CURRENT_CYCLE_TIME);
-                        }
-                    } // End of non test mode request success
-                } // End of dealing with successful requests
-                else
-                {
-                    // Not enough resources are available to grant the request
-                    task.setStatus(2);
-                    task.setWaitTime(task.getWaitTime() + 1);
-                    deadlockedTasksContainer.add(task);
+                        // Resource has not been requested before, adds a new key/ value pair
+                        map.put(resource, amountRequested);
+                        resource.getTaskUsageList().add(task);
+                    }
 
                     //if ((IS_VERBOSE_MODE) && (!isTestCycle))
                     if (IS_VERBOSE_MODE)
                     {
+
                         System.out.println("For step #" + currentStep.getStepID() + ": Task " + outputTaskNumber +
-                                " unsuccessfully requested " + amountRequested + " of resource "
+                                " successfully requested " + amountRequested + " of resource "
                                 + resource.getResourceID() + " at time: " + CURRENT_CYCLE_TIME);
                     }
-                }
+                    STEP_SUCCEEDED_IN_DEADLOCK = true;
+                } // End of dealing with requests that have enough resources
+                else
+                {
+                    requestFailed(currentStep, task, outputTaskNumber, amountRequested);
+                } // End of dealing with requests that do not have enough resources
                 break;
-
-            } // End of case 1: request
+            } // End of case 1: request (real)
             case 2:
-                // Action is: compute
+            {
+                // Case 2: compute (real)
                 // Task is computing (will make no more requests/release for a certain number of cycles)
                 // Adds the number of cycles the task is busy with computation: only works for given datasets
                 int computeTime = (int) currentStep.getReferencedResource();
@@ -341,46 +457,65 @@ public class SimulateResourceManagers
                     System.out.println("For step #" + currentStep.getStepID() + ": Task " + outputTaskNumber +
                             " is computing for " + computeTime + " at time: " + CURRENT_CYCLE_TIME);
                 }
+                STEP_SUCCEEDED_IN_DEADLOCK = true;
                 break;
+            } // End of case 2: compute (real)
             case 3:
             {
-                // Action is: release
+                // Case 3: release (real)
                 Resource resource =  (Resource) currentStep.getReferencedResource();
-                resource.setResourcesCurrentlyAvaillable(
-                        resource.getResourcesCurrentlyAvaillable() + amountRequested);
-                HashMap<Resource, Integer> map = task.getResourcesInUse();
-                int currentAmountUsedBeforeRelease = task.getResourcesInUse().get(resource);
+                if (task.getResourcesInUse().get(resource) < amountRequested)
+                {
+                    // [FAIL] Deals with when a resource is requesting to release more than is already allocated
 
-                if (currentAmountUsedBeforeRelease - amountRequested == 0)
-                {
-                    // No more of that resource type remaining for the task
-                    map.remove(resource);
-                    resource.getTaskUsageList().remove(task);
-                }
-                else if (currentAmountUsedBeforeRelease - amountRequested > 0)
-                {
-                    // There is some amount of that resource type remaining for the task
-                    map.replace(resource, map.get(resource) - amountRequested);
+                    // Not enough resources are available to grant the request
+                    requestFailed(currentStep, task, outputTaskNumber, amountRequested);
                 }
                 else
                 {
-                    // An error occurred, more resources were released than were allocated to the task
-                    System.err.println("Error: More resources were released than were allocated to the task");
-                    System.exit(1);
-                }
+                    // [SUCCESS] Deals with when a resource is able to release all requested resources
+                    // Adds to the hashmap any resources to be freed at the start of the cycle
+                    resourcesToBeFreedAtStartOfCycle.put(resource, amountRequested);
 
-                //if ((IS_VERBOSE_MODE) && (!isTestCycle))
-                if (IS_VERBOSE_MODE)
-                {
-                    System.out.println("For step #" + currentStep.getStepID() + ": Task " + outputTaskNumber +
-                            " released " + amountRequested + " of resource "
-                            + resource.getResourceID() + " at time: " + CURRENT_CYCLE_TIME);
+                    // Clears up the task's resource map
+                    HashMap<Resource, Integer> map = task.getResourcesInUse();
+                    int currentAmountUsedBeforeRelease = task.getResourcesInUse().get(resource);
+
+                    // For any resource released, it is available at the end of the current cycle
+                    if (currentAmountUsedBeforeRelease - amountRequested == 0)
+                    {
+                        // No more of that resource type remaining for the task
+                        map.remove(resource);
+                        resource.getTaskUsageList().remove(task);
+                    }
+                    else if (currentAmountUsedBeforeRelease - amountRequested > 0)
+                    {
+                        // There is some amount of that resource type remaining for the task
+                        map.replace(resource, map.get(resource) - amountRequested);
+                    }
+                    else
+                    {
+                        // An error occurred, more resources were released than were allocated to the task
+                        System.err.println("Error: More resources were released than were allocated to the task");
+                        System.exit(1);
+                    }
+
+                    //if ((IS_VERBOSE_MODE) && (!isTestCycle))
+                    if (IS_VERBOSE_MODE)
+                    {
+                        int releaseTime = CURRENT_CYCLE_TIME + 1;
+                        System.out.println("For step #" + currentStep.getStepID() + ": Task " + outputTaskNumber +
+                                " successfully released " + amountRequested + " of resource "
+                                + resource.getResourceID() + " at time: " + CURRENT_CYCLE_TIME
+                                + " which is available at time: " + releaseTime);
+                    }
+                    STEP_SUCCEEDED_IN_DEADLOCK = true;
                 }
                 break;
-            } // End of case 3: release
+            } // End of case 3: release (real)
             case 4:
-                // Action is: terminate
-
+            {
+                // Case 4: terminate (real)
                 task.setStopTime(CURRENT_CYCLE_TIME);
 
                 HashMap<Resource, Integer> map = task.getResourcesInUse();
@@ -409,24 +544,71 @@ public class SimulateResourceManagers
                     System.out.println("For step #" + currentStep.getStepID() + ": Task " + outputTaskNumber +
                             " terminated at time: " + CURRENT_CYCLE_TIME);
                 }
+                STEP_SUCCEEDED_IN_DEADLOCK = true;
                 break;
+            } // End of case 4: terminate (real)
             default:
                 // Action is none of the above
-                System.err.println("ERROR: Invalid action was requested in ORM");
+                System.err.println("Error: Invalid action was requested in ORM");
+                System.exit(1);
                 break;
-        }
-    } // End of the sequential task, single group ORM method
+        } // End of dealing with ORM real cycle
+    } // End of the sequential task ORM real cycle
 
-    private static void multiTaskORM(Step currentStep)
+    private static void testingWhetherCurrentStepIsValid(Step currentStep, int currentStepType,
+                                                         Task task, int amountRequested)
     {
-
-    } // End of the multitask, single group orm method
-
-    private static void multiGroupORM()
-    {
-        // Single task per group
-
-    } // End of the multi group ORM method
+        switch (currentStepType)
+        {
+            case 0:
+            {
+                // Case 0: initiate (test)
+                STEP_SUCCEEDED_IN_DEADLOCK = true;
+                break;
+            } // End of case 0: initiate (test)
+            case 1:
+            {
+                // Case 1: request (test)
+                Resource resource =  (Resource) currentStep.getReferencedResource();
+                if (amountRequested <= resource.getResourcesCurrentlyAvaillable())
+                {
+                    // Enough resources are available to grant the request
+                    task.setWaitTime(task.getWaitTime() + 1);
+                    STEP_SUCCEEDED_IN_DEADLOCK = true;
+                }
+                else
+                {
+                    // Not enough resources are available to grant the request
+                    STEP_SUCCEEDED_IN_DEADLOCK = false;
+                }
+                break;
+            } // End of case 1: request (test)
+            case 2:
+            {
+                // Case 2: compute (test)
+                STEP_SUCCEEDED_IN_DEADLOCK = true;
+                break;
+            } // End of case 2: compute (test)
+            case 3:
+            {
+                // Case 3: release (test)
+                Resource resource =  (Resource) currentStep.getReferencedResource();
+                STEP_SUCCEEDED_IN_DEADLOCK = task.getResourcesInUse().get(resource) >= amountRequested;
+                    break;
+            } // End of case 3: release (test)
+            case 4:
+            {
+                // Case 4: terminate (test)
+                STEP_SUCCEEDED_IN_DEADLOCK = true;
+                break;
+            } // End of case 4: terminate (test)
+            default:
+                // Action is none of the above
+                System.err.println("Error: Invalid action was requested in ORM");
+                System.exit(1);
+                break;
+        } // End of dealing with ORM test cycle
+    } // End of the sequential task ORM test cycle method
 
     /**
      * [Application Method] Simulates the banker's algorithm resource manager
@@ -587,7 +769,8 @@ public class SimulateResourceManagers
                                 "Error: Invalid activity found, please check the spelling in the input file");
                 }
                 Step stepToBeAdded = new Step(i, convertedStepType, NUMBER_OF_GROUPS,
-                        taskContainer.get(referencedTaskRaw - 1), referencedResource, numberOfResourcesUtilised, null, null);
+                        taskContainer.get(referencedTaskRaw - 1), referencedResource, numberOfResourcesUtilised,
+                        null, null, false, false);
                 stepContainer.add(stepToBeAdded);
 
                 // Adds the new step if it's an initiate request and the task referenced is unique
@@ -826,8 +1009,11 @@ public class SimulateResourceManagers
 
             System.out.print("The current resource is currently in use by:");
             for (Task currentTask : currentResource.getTaskUsageList())
-                System.out.print(" Task " + currentTask.getTaskID() + " (" +
+            {
+                int taskIDOutput = currentTask.getTaskID() + 1;
+                System.out.print(" Task " + taskIDOutput + " (" +
                         currentTask.getResourcesInUse().get(currentResource) + ")");
+            }
             System.out.println();
         }
     } // End of the test resource container method

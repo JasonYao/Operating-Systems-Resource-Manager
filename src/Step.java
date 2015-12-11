@@ -13,10 +13,14 @@ public class Step
     private int numberOfResourcesUtilised;
     private Step nextStep;
     private Step previousStep;
+    private boolean isMarkedForRemovalFromDeadlock;
+    private boolean shouldBeSkipped;
 
     public Step(int stepID, int stepType, int group, Task referencedTask, Object referencedResource,
-                int numberOfResourcesUtilised, Step nextStep, Step previousStep)
+                int numberOfResourcesUtilised, Step nextStep, Step previousStep, boolean isMarkedForRemovalFromDeadlock, boolean shouldBeSkipped)
     {
+        setShouldBeSkipped(shouldBeSkipped);
+        setMarkedForRemovalFromDeadlock(isMarkedForRemovalFromDeadlock);
         setPreviousStep(previousStep);
         setNextStep(nextStep);
         setStepID(stepID);
@@ -27,6 +31,22 @@ public class Step
         setReferencedResource(referencedResource);
         setNumberOfResourcesUtilised(numberOfResourcesUtilised);
     } // End of the step object constructor
+
+    public boolean isMarkedForRemovalFromDeadlock() {
+        return isMarkedForRemovalFromDeadlock;
+    }
+
+    public void setMarkedForRemovalFromDeadlock(boolean markedForRemovalFromDeadlock) {
+        isMarkedForRemovalFromDeadlock = markedForRemovalFromDeadlock;
+    }
+
+    public boolean isShouldBeSkipped() {
+        return shouldBeSkipped;
+    }
+
+    public void setShouldBeSkipped(boolean shouldBeSkipped) {
+        this.shouldBeSkipped = shouldBeSkipped;
+    }
 
     public Step getPreviousStep() {
         return previousStep;
